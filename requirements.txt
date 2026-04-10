@@ -1,0 +1,7 @@
+flask
+flask-sqlalchemy
+flask-migrate
+marshmallow
+psycopg2-binary
+redis
+rq

@@ -1,0 +1,47 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: taskmanager
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+
+  app:
+    build: .
+    ports:
+      - "5001:5000"
+    environment:
+      DATABASE_URL: postgresql://postgres:password@db:5432/taskmanager
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "flask db init || true && flask db migrate -m 'initial' || true && flask db upgrade && flask run"
+
+  worker:
+    build: .
+    environment:
+      DATABASE_URL: postgresql://postgres:password@db:5432/taskmanager
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: python worker.py
+
+volumes:
+  postgres_data:
